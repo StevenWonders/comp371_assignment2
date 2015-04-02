@@ -1,0 +1,70 @@
+#version 330 core
+
+
+// Light and Material Uniform Variables
+uniform vec4 materialCoefficients; // x: ambient   y: diffuse   z: specular   w: specular exponent
+
+uniform vec3 lightColor;
+uniform vec3 lightAttenuation; // x: kC  y: kL  z: kQ
+
+
+// Inputs
+in vec3 v_color;		 // vertex color: also diffuse color
+
+in vec3 normal;          // Transformed normal in View Space
+in vec3 eyeVector;       // Vector from the vertex to the Camera in View Space
+in vec4 lightVector;     // Vector from the vertex to the Light in View Space
+						 // Length of lightVector is the distance between light and vertex
+						 // if w = 1: Point light, if w = 0: directional light
+
+// Ouput data
+out vec3 color;
+
+
+void main()
+{
+	// Implment Phong Shading based on the parameters above
+	// Remember that directional light don't have attenuation
+	
+	float attenuation = 0;
+
+	if (lightVector.w == 0) {
+		attenuation = 1;
+	}
+	else {
+		float distance = length((lightVector).xyz);
+		attenuation = 1 / (lightAttenuation.x + lightAttenuation.y*distance + lightAttenuation.z*distance*distance);
+		//attenuation = 1;
+	}
+	
+	// Calculate ambient
+	vec3 ambient = materialCoefficients.x * v_color;
+
+	// Calculate diffuse
+	vec3 diffuse = materialCoefficients.y * max(0, dot(normal, lightVector.xyz)) * attenuation * v_color;
+		
+	// Compute r
+	vec3 l_normalized = normalize((lightVector).xyz);
+	//vec3 r = 2*dot(normal, l_normalized)*normal-l_normalized;
+	//r = normalize(r);
+	
+	vec3 r = reflect(-l_normalized.xyz,normal);
+
+	// Compute specular
+	vec3 specular = materialCoefficients.z * attenuation * v_color;
+	float cosTheta = max(0, dot(r, eyeVector));
+
+	/*if (cosTheta > 0.95) {
+		color = vec3(0,1,0);
+		return;
+	}*/
+
+	// For loop for the exponent
+	for (int i = 0; i < 5; i++) {
+		specular = cosTheta * specular;
+	}
+
+	color = ambient + diffuse + specular;
+	
+	//color = v_color;
+}
